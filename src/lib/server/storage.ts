@@ -18,14 +18,20 @@ import { put } from "@vercel/blob";
  * not a static dashboard env var) rather than the older static
  * BLOB_READ_WRITE_TOKEN — @vercel/blob's `put()` auto-detects whichever is
  * present, so we just need to know a store is connected at all.
+ *
+ * The connected store is a *private* store (access:"public" is rejected —
+ * this Vercel account's store type doesn't support public files), so blobs
+ * require an authenticated fetch to read back. We store our own proxy path
+ * here instead of the raw Blob URL; api/audio/[...path] does the
+ * authenticated fetch server-side and streams the bytes through.
  */
 export async function uploadAudioFile(file: File): Promise<string> {
   const ext = path.extname(file.name) || ".mp3";
   const filename = `${crypto.randomUUID()}${ext}`;
 
   if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) {
-    const blob = await put(`audio/${filename}`, file, { access: "public" });
-    return blob.url;
+    const blob = await put(`audio/${filename}`, file, { access: "private" });
+    return `/api/audio/${blob.pathname}`;
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
