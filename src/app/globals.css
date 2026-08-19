@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Archivo Black", "Arial Black", sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+  --font-body: "Inter", sans-serif;
+}
+
+:root {
+  --bg: #FAFAF7;
+  --ink: #0A0A0A;
+  --paper: #FFFFFF;
+  --line: #0A0A0A;
+  --muted: #6B6B63;
+  --yellow: #FFE600;
+  --red: #FF3B30;
+  --green: #00C853;
+  --blue: #2563EB;
+  --purple: #7C3AED;
+}
+
+.dark {
+  --bg: #0A0A0A;
+  --ink: #FAFAF7;
+  --paper: #141412;
+  --line: #FAFAF7;
+  --muted: #9A9A90;
+  --yellow: #FFE600;
+  --red: #FF5B4D;
+  --green: #00E676;
+  --blue: #60A5FA;
+  --purple: #A78BFA;
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+/* Hard, offset shadow — the signature brutalist "stamped card" effect */
+.hard-shadow {
+  box-shadow: 6px 6px 0 0 var(--line);
+}
+.hard-shadow-sm {
+  box-shadow: 4px 4px 0 0 var(--line);
+}
+.hard-shadow-lg {
+  box-shadow: 10px 10px 0 0 var(--line);
+}
+
+.border-ink {
+  border-color: var(--line);
+}
+
+/* Halftone/dot texture for accent panels */
+.dot-grid {
+  background-image: radial-gradient(var(--line) 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.08;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.confetti-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  overflow: hidden;
+}

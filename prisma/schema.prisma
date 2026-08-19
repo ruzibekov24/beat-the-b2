@@ -1,0 +1,344 @@
+// ============================================================
+// CAN YOU BEAT THE B2? — Database Schema
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------
+
+enum Level {
+  A1_A2
+  B1
+  B2
+  C1
+}
+
+enum ChallengeType {
+  quiz
+  ai_battle
+  listening
+  reading
+  vocabulary
+  grammar
+  speed
+  final
+}
+
+enum ChallengeStatus {
+  draft
+  scheduled
+  published
+  archived
+}
+
+enum AttemptStatus {
+  in_progress
+  submitted
+  expired
+}
+
+enum QuestionType {
+  multiple_choice
+  fill_blank
+  matching
+  true_false
+}
+
+// ------------------------------------------------------------
+// USERS
+// ------------------------------------------------------------
+
+model User {
+  id                String   @id @default(cuid())
+  telegramId        String?  @unique
+  telegramUsername  String?
+  googleId          String?  @unique
+  email             String?  @unique
+  firstName         String
+  lastName          String?
+  photoUrl          String?
+  name              String // display name captured at registration
+
+  level             Level?
+  levelLockedAt     DateTime?
+
+  totalPoints       Int      @default(0)
+  dayStreak         Int      @default(0)
+  lastActiveDay     Int?     // last competition day (1-7) user was active on
+
+  referralCode      String   @unique
+  referredById      String?
+  referredBy        User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals         User[]   @relation("Referrals")
+
+  isAdmin           Boolean  @default(false)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  attempts          ChallengeAttempt[]
+  achievements      UserAchievement[]
+  referralRewards   ReferralReward[]  @relation("ReferrerRewards")
+
+  @@index([level])
+  @@index([totalPoints])
+}
+
+// ------------------------------------------------------------
+// CHALLENGES (admin-controlled, database-driven)
+// ------------------------------------------------------------
+
+model Challenge {
+  id            String          @id @default(cuid())
+  day           Int // 1-7
+  title         String
+  subtitle      String?
+  type          ChallengeType
+  description   String?
+  level         Level? // null = available to all levels
+  basePoints    Int             @default(10)
+  timeLimitSec  Int? // overall challenge time limit
+  maxAttempts   Int             @default(1)
+
+  startTime     DateTime?
+  endTime       DateTime?
+  status        ChallengeStatus @default(draft)
+
+  // optional linked content
+  readingId     String?         @unique
+  reading       ReadingMaterial? @relation(fields: [readingId], references: [id])
+  listeningId   String?         @unique
+  listening     ListeningMaterial? @relation(fields: [listeningId], references: [id])
+
+  questions     ChallengeQuestion[]
+  attempts      ChallengeAttempt[]
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([day])
+  @@index([status])
+}
+
+model ChallengeQuestion {
+  id            String        @id @default(cuid())
+  challengeId   String
+  challenge     Challenge     @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  order         Int
+  type          QuestionType  @default(multiple_choice)
+  prompt        String
+  points        Int           @default(10)
+  explanation   String?
+
+  options       ChallengeOption[]
+  answers       ChallengeAnswer[]
+
+  createdAt     DateTime      @default(now())
+
+  @@index([challengeId])
+}
+
+model ChallengeOption {
+  id            String            @id @default(cuid())
+  questionId    String
+  question      ChallengeQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  label         String // "A", "B", "C", "D"
+  text          String
+  isCorrect     Boolean           @default(false)
+
+  @@index([questionId])
+}
+
+// A single user's attempt at a challenge
+model ChallengeAttempt {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  challengeId   String
+  challenge     Challenge      @relation(fields: [challengeId], references: [id])
+
+  status        AttemptStatus  @default(in_progress)
+  startedAt     DateTime       @default(now())
+  submittedAt   DateTime?
+  timeTakenSec  Int?
+
+  correctCount  Int            @default(0)
+  totalCount    Int            @default(0)
+  rawPoints     Int            @default(0) // sum of base question points earned
+  finalPoints   Int            @default(0) // rawPoints * level multiplier, server-computed
+
+  answers       ChallengeAnswer[]
+
+  @@unique([userId, challengeId, status], name: "uniq_active_attempt") // app logic further guards duplicate submits
+  @@index([userId])
+  @@index([challengeId])
+}
+
+model ChallengeAnswer {
+  id            String            @id @default(cuid())
+  attemptId     String
+  attempt       ChallengeAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId    String
+  question      ChallengeQuestion @relation(fields: [questionId], references: [id])
+
+  selectedOptionId String?
+  isCorrect     Boolean           @default(false)
+  pointsAwarded Int               @default(0)
+
+  answeredAt    DateTime          @default(now())
+
+  @@unique([attemptId, questionId])
+}
+
+// ------------------------------------------------------------
+// DAILY MISSIONS (smaller tasks alongside the main daily challenge)
+// ------------------------------------------------------------
+
+model DailyMission {
+  id          String   @id @default(cuid())
+  day         Int
+  title       String
+  icon        String? // emoji or icon key
+  points      Int      @default(25)
+  linkedChallengeId String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([day])
+}
+
+// ------------------------------------------------------------
+// READING / LISTENING CONTENT (admin-managed)
+// ------------------------------------------------------------
+
+model ReadingMaterial {
+  id           String    @id @default(cuid())
+  title        String
+  content      String
+  level        Level
+  timeLimitSec Int?
+  isPublished  Boolean   @default(false)
+  isDemo       Boolean   @default(false)
+
+  challenge    Challenge?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model ListeningMaterial {
+  id           String    @id @default(cuid())
+  title        String
+  audioUrl     String
+  level        Level
+  durationSec  Int?
+  isPublished  Boolean   @default(false)
+  isDemo       Boolean   @default(false)
+
+  challenge    Challenge?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ------------------------------------------------------------
+// REFERRALS
+// ------------------------------------------------------------
+
+model ReferralReward {
+  id            String   @id @default(cuid())
+  referrerId    String
+  referrer      User     @relation("ReferrerRewards", fields: [referrerId], references: [id])
+  newUserId     String   @unique // one reward per referred user — prevents double reward
+  points        Int      @default(10)
+  createdAt     DateTime @default(now())
+
+  @@index([referrerId])
+}
+
+// ------------------------------------------------------------
+// ACHIEVEMENTS
+// ------------------------------------------------------------
+
+model Achievement {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g. "first_challenge", "bot_slayer"
+  title       String
+  description String?
+  icon        String?
+
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+// ------------------------------------------------------------
+// TELEGRAM BOT LOGIN (alternative to the Login Widget)
+// ------------------------------------------------------------
+
+model TelegramLoginToken {
+  id            String    @id @default(cuid())
+  token         String    @unique // random token embedded in the t.me deep link
+  status        String    @default("pending") // pending | confirmed | expired
+  telegramId    String?
+  telegramUsername String?
+  firstName     String?
+  lastName      String?
+  photoUrl      String?
+  referralCode  String?
+  createdAt     DateTime  @default(now())
+  confirmedAt   DateTime?
+
+  @@index([status])
+}
+
+// ------------------------------------------------------------
+// ADMIN
+// ------------------------------------------------------------
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+// ------------------------------------------------------------
+// COMPETITION SETTINGS (single-row config table)
+// ------------------------------------------------------------
+
+model CompetitionSettings {
+  id                   String   @id @default("singleton")
+  startDate            DateTime?
+  endDate              DateTime?
+
+  multiplierA1A2       Float    @default(1.0)
+  multiplierB1          Float    @default(1.25)
+  multiplierB2          Float    @default(1.5)
+  multiplierC1          Float    @default(2.0)
+
+  referralPoints        Int      @default(10)
+  maxAttemptsDefault     Int      @default(1)
+
+  updatedAt              DateTime @updatedAt
+}
