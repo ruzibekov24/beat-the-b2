@@ -18,7 +18,7 @@ interface Challenge {
   _count: { questions: number; attempts: number };
 }
 
-const CHALLENGE_TYPES = ["quiz", "ai_battle", "listening", "reading", "vocabulary", "grammar", "speed", "final", "hangman"];
+const CHALLENGE_TYPES = ["quiz", "ai_battle", "listening", "reading", "vocabulary", "grammar", "speed", "final", "hangman", "word_collect"];
 
 export default function AdminChallengesPage() {
   const router = useRouter();

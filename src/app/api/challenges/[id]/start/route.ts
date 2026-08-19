@@ -4,6 +4,15 @@ import { getSession } from "@/lib/server/auth";
 import { simulateAiOpponent } from "@/lib/server/ai-opponent";
 import type { LevelKey } from "@/lib/levels";
 
+function shuffle<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 /**
  * Starts (or resumes) an attempt for a challenge.
  * Returns questions WITHOUT the isCorrect flag on options — the frontend
@@ -87,6 +96,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       // Hangman: the word's length is safe to reveal (renders the blank
       // tiles) but never the word itself — letters come from /hangman-guess.
       wordLength: challenge.type === "hangman" ? q.options.find((o) => o.isCorrect)?.text.length ?? null : null,
+      // Word Collect: the shuffled letter bag is safe to reveal (the
+      // challenge IS finding the right order) — unlike hangman/fill_blank
+      // there's no separate correctness round-trip needed during play,
+      // the assembled word is graded once at /submit like any fill_blank.
+      scrambledLetters:
+        challenge.type === "word_collect"
+          ? shuffle((q.options.find((o) => o.isCorrect)?.text ?? "").split(""))
+          : null,
     })),
   });
 }

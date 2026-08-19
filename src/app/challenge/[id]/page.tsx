@@ -19,6 +19,7 @@ interface Question {
   timeLimitSec: number | null;
   options: Option[];
   wordLength: number | null;
+  scrambledLetters: string[] | null;
 }
 interface HangmanState {
   guessed: string[];
@@ -72,6 +73,7 @@ export default function ChallengePage() {
   const [battleReveal, setBattleReveal] = useState<BattleReveal | null>(null);
   const [battleScore, setBattleScore] = useState({ user: 0, ai: 0 });
   const [hangman, setHangman] = useState<Record<string, HangmanState>>({});
+  const [wordCollectOrder, setWordCollectOrder] = useState<Record<string, number[]>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef<number>(Date.now());
 
@@ -264,6 +266,23 @@ export default function ChallengePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hangman, currentIndex, session, result]);
 
+  function tapWordCollectLetter(questionId: string, letters: string[], idx: number) {
+    setWordCollectOrder((prev) => {
+      const order = prev[questionId] ?? [];
+      if (order.includes(idx)) return prev;
+      const nextOrder = [...order, idx];
+      if (nextOrder.length === letters.length) {
+        setTextAnswers((t) => ({ ...t, [questionId]: nextOrder.map((i) => letters[i]).join("") }));
+      }
+      return { ...prev, [questionId]: nextOrder };
+    });
+  }
+
+  function undoWordCollectLetter(questionId: string) {
+    setWordCollectOrder((prev) => ({ ...prev, [questionId]: (prev[questionId] ?? []).slice(0, -1) }));
+    setTextAnswers((prev) => ({ ...prev, [questionId]: "" }));
+  }
+
   function selectOption(questionId: string, optionId: string) {
     if (answers[questionId]) return;
     setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
@@ -292,6 +311,7 @@ export default function ChallengePage() {
 
   const question = session.questions[currentIndex];
   const isHangman = session.challenge.type === "hangman";
+  const isWordCollect = session.challenge.type === "word_collect";
   const progress = ((currentIndex + (isAnswered(question) ? 1 : 0)) / session.questions.length) * 100;
   const answeredAll = session.questions.every(isAnswered);
 
@@ -369,6 +389,26 @@ export default function ChallengePage() {
               onGuess={(letter) => guessLetter(question.id, letter)}
               focusMode={focusMode}
             />
+          ) : isWordCollect ? (
+            <div className="mt-8">
+              <WordCollectGame
+                question={question}
+                order={wordCollectOrder[question.id] ?? []}
+                onTap={(idx) => tapWordCollectLetter(question.id, question.scrambledLetters ?? [], idx)}
+                onUndo={() => undoWordCollectLetter(question.id)}
+                focusMode={focusMode}
+              />
+              {currentIndex < session.questions.length - 1 && (
+                <Button
+                  className="mt-6 w-full"
+                  variant="secondary"
+                  onClick={() => confirmTextAnswer(question.id)}
+                  disabled={!textAnswers[question.id]}
+                >
+                  Next
+                </Button>
+              )}
+            </div>
           ) : question.type === "fill_blank" ? (
             <div className="mt-8">
               <input
@@ -506,6 +546,80 @@ function RoundFace({ label, correct }: { label: string; correct: boolean }) {
         {correct ? <Check size={24} className="text-black" /> : <X size={24} className="text-black" />}
       </div>
       <p className="text-xs font-bold">{label}</p>
+    </div>
+  );
+}
+
+function WordCollectGame({
+  question,
+  order,
+  onTap,
+  onUndo,
+  focusMode,
+}: {
+  question: Question;
+  order: number[];
+  onTap: (idx: number) => void;
+  onUndo: () => void;
+  focusMode: boolean;
+}) {
+  const letters = question.scrambledLetters ?? [];
+  const used = new Set(order);
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex flex-wrap justify-center gap-2 min-h-[3.25rem] border-b-4 pb-3",
+          focusMode ? "border-white/40" : "border-[var(--line)]"
+        )}
+      >
+        {order.length === 0 && (
+          <p className="text-xs text-[var(--muted)] self-center font-[family-name:var(--font-mono)]">
+            Tap letters below to spell the word
+          </p>
+        )}
+        {order.map((idx, pos) => (
+          <div
+            key={pos}
+            className={cn(
+              "w-10 h-10 border-2 grid place-items-center font-[family-name:var(--font-mono)] font-bold text-lg uppercase",
+              focusMode ? "border-[var(--yellow)] bg-white/10" : "border-[var(--line)] bg-[var(--yellow)]"
+            )}
+          >
+            {letters[idx]}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {letters.map((letter, i) => (
+          <button
+            key={i}
+            onClick={() => onTap(i)}
+            disabled={used.has(i)}
+            className={cn(
+              "w-10 h-10 border-2 grid place-items-center font-[family-name:var(--font-mono)] font-bold text-lg uppercase transition-all",
+              used.has(i)
+                ? "opacity-20 border-[var(--muted)] cursor-default"
+                : focusMode
+                ? "border-white/30 hover:border-[var(--yellow)]"
+                : "border-[var(--line)] hover:bg-[var(--yellow)] hover:text-black"
+            )}
+          >
+            {letter}
+          </button>
+        ))}
+      </div>
+
+      {order.length > 0 && (
+        <button
+          onClick={onUndo}
+          className="mt-4 block mx-auto text-xs text-[var(--muted)] hover:underline font-[family-name:var(--font-mono)] uppercase tracking-wide"
+        >
+          Undo last letter
+        </button>
+      )}
     </div>
   );
 }

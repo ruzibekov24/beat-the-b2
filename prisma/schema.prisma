@@ -32,6 +32,7 @@ enum ChallengeType {
   speed
   final
   hangman
+  word_collect
 }
 
 enum ChallengeStatus {

@@ -174,6 +174,36 @@ Output ONLY a JSON array, no prose, no markdown fences:
 ]
 ```
 
+## For Word Collect challenges
+
+Pick **Type: word_collect**. Same JSON shape as Hangman/fill_blank again —
+the player taps scrambled letters (shuffled automatically by the app, you
+don't need to scramble anything) to spell the word.
+
+```
+Write [NUMBER, e.g. 8] Word Collect rounds for:
+- Level: [A1_A2 / B1 / B2 / C1]
+- Theme: [e.g. "travel vocabulary"]
+
+Rules:
+- Each word is single-word, no spaces or hyphens, 4-9 letters (longer
+  words get harder to unscramble mentally, keep it fair).
+- The clue must NOT contain the word itself or an obvious root of it.
+
+Output ONLY a JSON array, no prose, no markdown fences:
+
+[
+  {
+    "type": "fill_blank",
+    "prompt": "One-sentence clue here.",
+    "points": 15,
+    "options": [
+      { "label": "", "text": "secretword", "isCorrect": true }
+    ]
+  }
+]
+```
+
 ---
 
 ## Generating brand images with ChatGPT
