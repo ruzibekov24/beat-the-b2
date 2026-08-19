@@ -49,10 +49,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // For AI Battle challenges, generate the opponent's result at the same
     // level so the frontend can render a head-to-head comparison.
     let opponent = null;
-    const challenge = await db.challenge.findUnique({ where: { id: challengeId } });
+    const challenge = await db.challenge.findUnique({
+      where: { id: challengeId },
+      include: { questions: { select: { prompt: true }, orderBy: { order: "asc" } } },
+    });
     const user = await db.user.findUnique({ where: { id: session.userId } });
     if (challenge?.type === "ai_battle" && user?.level) {
-      opponent = simulateAiOpponent(user.level as import("@/lib/levels").LevelKey, graded.totalCount);
+      opponent = await simulateAiOpponent(
+        user.level as import("@/lib/levels").LevelKey,
+        graded.totalCount,
+        challenge.questions
+      );
     }
 
     return NextResponse.json({

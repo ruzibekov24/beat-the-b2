@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Maximize, Minimize, X } from "lucide-react";
+import { Maximize, Minimize, X, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,7 @@ interface AiOpponentResult {
   totalCount: number;
   accuracy: number;
   timeTakenSec: number;
+  commentary?: string;
 }
 interface SubmitResponse {
   correctCount: number;
@@ -293,29 +294,7 @@ function ResultScreen({
               <ResultStat label="Correct" value={`${result.correctCount}/${result.totalCount}`} />
             </div>
 
-            {result.opponent && (
-              <div className="mt-6 border-2 border-[var(--line)] p-5">
-                <p className="text-xs font-bold text-[var(--muted)] uppercase mb-3 tracking-widest">Bot Battle</p>
-                <div className="flex items-center justify-between">
-                  <div className="text-center">
-                    <p className="text-sm font-bold">YOU</p>
-                    <p className="text-2xl font-bold">{result.correctCount}/{result.totalCount}</p>
-                  </div>
-                  <p className="font-[family-name:var(--font-display)] text-lg text-[var(--muted)]">VS</p>
-                  <div className="text-center">
-                    <p className="text-sm font-bold">AI</p>
-                    <p className="text-2xl font-bold">{result.opponent.correctCount}/{result.opponent.totalCount}</p>
-                  </div>
-                </div>
-                <p className="mt-4 font-bold uppercase text-sm">
-                  {result.correctCount > result.opponent.correctCount
-                    ? "You beat the bot!"
-                    : result.correctCount === result.opponent.correctCount
-                    ? "It's a tie!"
-                    : "The bot won this round."}
-                </p>
-              </div>
-            )}
+            {result.opponent && <FightResult result={result} opponent={result.opponent} />}
 
             <p className="mt-6 text-[var(--muted)]">
               Current rank: <span className="font-bold text-[var(--ink)]">#{result.rank}</span>
@@ -327,6 +306,102 @@ function ResultScreen({
           <Button variant="secondary" onClick={onLeaderboard}>Leaderboard</Button>
           <Button onClick={onHome}>Back home</Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function FightResult({ result, opponent }: { result: SubmitResponse; opponent: AiOpponentResult }) {
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setRevealed(true), 150);
+    return () => clearTimeout(t);
+  }, []);
+
+  const outcome =
+    result.correctCount > opponent.correctCount
+      ? "win"
+      : result.correctCount === opponent.correctCount
+      ? "draw"
+      : "loss";
+
+  const stampText = outcome === "win" ? "VICTORY" : outcome === "draw" ? "DRAW" : "DEFEAT";
+  const stampColor =
+    outcome === "win" ? "var(--green)" : outcome === "draw" ? "var(--yellow)" : "var(--red)";
+
+  return (
+    <div className="mt-6 border-2 border-[var(--line)] p-5 overflow-hidden">
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <Swords size={16} className="text-[var(--muted)]" />
+        <p className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest">AI Battle</p>
+      </div>
+
+      <div className="flex items-center justify-center gap-4">
+        <FighterBar
+          label="YOU"
+          percent={result.accuracy}
+          color="var(--blue)"
+          revealed={revealed}
+          align="right"
+        />
+        <p className="fight-vs font-[family-name:var(--font-display)] text-2xl shrink-0" style={{ color: stampColor }}>
+          VS
+        </p>
+        <FighterBar
+          label="AI"
+          percent={opponent.accuracy}
+          color="var(--purple)"
+          revealed={revealed}
+          align="left"
+        />
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <p
+          className="fight-stamp inline-block border-2 px-5 py-1.5 font-[family-name:var(--font-display)] text-xl uppercase tracking-wider"
+          style={{ color: stampColor, borderColor: stampColor, transform: "rotate(-6deg)" }}
+        >
+          {stampText}
+        </p>
+      </div>
+
+      {opponent.commentary && (
+        <p className="mt-4 text-center text-xs text-[var(--muted)] font-[family-name:var(--font-mono)] italic">
+          “{opponent.commentary}”
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FighterBar({
+  label,
+  percent,
+  color,
+  revealed,
+  align,
+}: {
+  label: string;
+  percent: number;
+  color: string;
+  revealed: boolean;
+  align: "left" | "right";
+}) {
+  return (
+    <div className="flex-1 min-w-0">
+      <div className={cn("flex items-baseline gap-2 mb-1.5", align === "right" ? "justify-end" : "justify-start")}>
+        {align === "left" && <span className="text-sm font-bold shrink-0">{label}</span>}
+        <span className="text-sm font-bold font-[family-name:var(--font-mono)]" style={{ color }}>
+          {percent}%
+        </span>
+        {align === "right" && <span className="text-sm font-bold shrink-0">{label}</span>}
+      </div>
+      <div className="h-3 border-2 border-[var(--line)] bg-[var(--bg)] overflow-hidden">
+        <div
+          className={cn("fight-bar-fill h-full", align === "right" && "ml-auto")}
+          style={{ width: revealed ? `${percent}%` : "0%", backgroundColor: color }}
+        />
       </div>
     </div>
   );
