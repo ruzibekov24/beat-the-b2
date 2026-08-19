@@ -142,3 +142,54 @@ TITLE: <short title>
 Then write comprehension questions as instructed above, testing what a
 listener would need to catch (not text visible to them).
 ```
+
+---
+
+## Generating brand images with ChatGPT
+
+The site's whole design is deliberately flat and icon-only right now (no
+photos anywhere) — brutalist, hard black borders, offset shadows, no
+gradients. Use this with ChatGPT's image generation (DALL·E) to get 1-2
+images in that same style, not photorealistic.
+
+**Where they go:**
+1. **Hero** (top of landing page, next to the headline) — a bold poster-style
+   illustration, not a photo, of someone taking on a challenge.
+2. **Prize section** ("1 Year Ustoz AI Premium" block) — a poster-style
+   trophy/award illustration to sit behind or beside that text.
+
+**The prompt (send once per image, swap the `[SUBJECT]` line):**
+
+```
+Create a bold, flat graphic design illustration in a brutalist poster
+style — NOT a photograph, not photorealistic, not 3D-rendered. Think
+Swiss punk poster design, screen-print aesthetic, hard black outlines
+on every shape.
+
+Style rules:
+- Flat color fills only — absolutely no gradients, no soft shading, no
+  drop shadows other than a single hard-edged offset shadow (like a
+  sticker peeling off the page).
+- Thick black outlines (2-4px equivalent) around every shape.
+- Palette: background is off-white (#FAFAF7) or pure black (#0A0A0A) —
+  pick one. Foreground shapes use black/off-white plus ONE accent color:
+  bright yellow (#FFE600). Optionally a small amount of blue (#2563EB)
+  or red (#FF3B30) as a second accent — never more than 3 colors total.
+- Bold, geometric, slightly rough/imperfect edges (like a woodcut or
+  screen print, not vector-perfect).
+- High contrast, poster-like composition — this needs to read instantly
+  at small size on a phone screen.
+- No text, no logos, no watermarks in the image.
+
+Subject: [SUBJECT]
+```
+
+Fill in `[SUBJECT]` with:
+- **Hero image**: "A determined young person mid-stride, breaking through
+  a cracked wall or barrier shaped like the letter B2, fist raised,
+  dynamic action pose, viewed from a slight low angle for a heroic feel."
+- **Prize image**: "A large trophy cup sitting on a pedestal, cracked open
+  at the top with a bright yellow glow/burst shape spilling out of it,
+  like it's exploding with light — bold and celebratory."
+
+Send me whatever comes back and I'll wire it into the design.
