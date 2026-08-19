@@ -143,6 +143,37 @@ Then write comprehension questions as instructed above, testing what a
 listener would need to catch (not text visible to them).
 ```
 
+## For Hangman challenges
+
+When creating a challenge, pick **Type: hangman**. Hangman "questions" use
+the exact same JSON shape as `fill_blank` — the clue goes in `prompt`, the
+secret word goes in `options` as the one correct entry. No `label` needed.
+
+```
+Write [NUMBER, e.g. 8] Hangman rounds for:
+- Level: [A1_A2 / B1 / B2 / C1]
+- Theme: [e.g. "business vocabulary", "phrasal verbs"]
+
+Rules:
+- Each word is single-word, no spaces or hyphens, 5-12 letters — longer
+  words make for a more interesting round.
+- The clue must NOT contain the word itself or an obvious root of it.
+- Write a one-sentence clue that's solvable without knowing the word already.
+
+Output ONLY a JSON array, no prose, no markdown fences:
+
+[
+  {
+    "type": "fill_blank",
+    "prompt": "One-sentence clue here.",
+    "points": 20,
+    "options": [
+      { "label": "", "text": "secretword", "isCorrect": true }
+    ]
+  }
+]
+```
+
 ---
 
 ## Generating brand images with ChatGPT

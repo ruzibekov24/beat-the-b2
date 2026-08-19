@@ -19,7 +19,7 @@ const createSchema = z.object({
   day: z.number().int().min(1).max(7),
   title: z.string().min(1),
   subtitle: z.string().optional(),
-  type: z.enum(["quiz", "ai_battle", "listening", "reading", "vocabulary", "grammar", "speed", "final"]),
+  type: z.enum(["quiz", "ai_battle", "listening", "reading", "vocabulary", "grammar", "speed", "final", "hangman"]),
   description: z.string().optional(),
   level: z.enum(["A1_A2", "B1", "B2", "C1"]).nullable().optional(),
   basePoints: z.number().int().min(1).default(10),

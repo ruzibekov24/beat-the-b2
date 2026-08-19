@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Maximize, Minimize, X, Swords, Check } from "lucide-react";
+import { Maximize, Minimize, X, Swords, Check, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,15 @@ interface Question {
   prompt: string;
   timeLimitSec: number | null;
   options: Option[];
+  wordLength: number | null;
 }
+interface HangmanState {
+  guessed: string[];
+  revealed: Record<number, string>;
+  wrong: number;
+}
+const HANGMAN_MAX_WRONG = 6;
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
 interface StartResponse {
   attemptId: string;
   challenge: { id: string; day: number; title: string; subtitle: string | null; type: string; timeLimitSec: number | null };
@@ -63,6 +71,7 @@ export default function ChallengePage() {
   const [submitting, setSubmitting] = useState(false);
   const [battleReveal, setBattleReveal] = useState<BattleReveal | null>(null);
   const [battleScore, setBattleScore] = useState({ user: 0, ai: 0 });
+  const [hangman, setHangman] = useState<Record<string, HangmanState>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef<number>(Date.now());
 
@@ -198,6 +207,63 @@ export default function ChallengePage() {
     }, 1700);
   }
 
+  async function guessLetter(questionId: string, letter: string) {
+    if (!session || hangman[questionId]?.guessed.includes(letter)) return;
+
+    const res = await fetch(`/api/challenges/${params.id}/hangman-guess`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attemptId: session.attemptId, questionId, letter }),
+    });
+    if (!res.ok) return;
+    const { correct, positions } = await res.json();
+
+    // Just merge the guess in — win/lose detection and advancing happens in
+    // a separate effect that reacts to this state, rather than trying to
+    // read the result back out of the updater here. React doesn't guarantee
+    // a functional setState updater runs synchronously relative to this
+    // function's continuation, so that read was itself a race condition.
+    setHangman((prev) => {
+      const state = prev[questionId] ?? { guessed: [], revealed: {}, wrong: 0 };
+      const newRevealed = { ...state.revealed };
+      if (correct) positions.forEach((p: number) => (newRevealed[p] = letter));
+      return {
+        ...prev,
+        [questionId]: {
+          guessed: [...state.guessed, letter],
+          revealed: newRevealed,
+          wrong: state.wrong + (correct ? 0 : 1),
+        },
+      };
+    });
+  }
+
+  // Reacts to hangman guesses landing — finalizes the round (win or lose)
+  // exactly once per question, then advances after a short pause.
+  useEffect(() => {
+    if (!session || result) return;
+    const q = session.questions[currentIndex];
+    if (session.challenge.type !== "hangman" || !q || q.wordLength == null) return;
+    if (timedOut[q.id] || textAnswers[q.id]) return; // already finalized
+
+    const state = hangman[q.id];
+    if (!state) return;
+
+    const won = Object.keys(state.revealed).length === q.wordLength;
+    const lost = state.wrong >= HANGMAN_MAX_WRONG;
+    if (!won && !lost) return;
+
+    if (won) {
+      const word = Array.from({ length: q.wordLength }, (_, i) => state.revealed[i]).join("");
+      setTextAnswers((prev) => ({ ...prev, [q.id]: word }));
+    } else {
+      setTimedOut((t) => ({ ...t, [q.id]: true }));
+    }
+    const timer = setTimeout(() => goNext(), 1400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hangman, currentIndex, session, result]);
+
   function selectOption(questionId: string, optionId: string) {
     if (answers[questionId]) return;
     setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
@@ -225,6 +291,7 @@ export default function ChallengePage() {
   if (!session) return <LoadingScreen />;
 
   const question = session.questions[currentIndex];
+  const isHangman = session.challenge.type === "hangman";
   const progress = ((currentIndex + (isAnswered(question) ? 1 : 0)) / session.questions.length) * 100;
   const answeredAll = session.questions.every(isAnswered);
 
@@ -295,7 +362,14 @@ export default function ChallengePage() {
             {question.prompt}
           </p>
 
-          {question.type === "fill_blank" ? (
+          {isHangman ? (
+            <HangmanGame
+              question={question}
+              state={hangman[question.id] ?? { guessed: [], revealed: {}, wrong: 0 }}
+              onGuess={(letter) => guessLetter(question.id, letter)}
+              focusMode={focusMode}
+            />
+          ) : question.type === "fill_blank" ? (
             <div className="mt-8">
               <input
                 type="text"
@@ -432,6 +506,74 @@ function RoundFace({ label, correct }: { label: string; correct: boolean }) {
         {correct ? <Check size={24} className="text-black" /> : <X size={24} className="text-black" />}
       </div>
       <p className="text-xs font-bold">{label}</p>
+    </div>
+  );
+}
+
+function HangmanGame({
+  question,
+  state,
+  onGuess,
+  focusMode,
+}: {
+  question: Question;
+  state: HangmanState;
+  onGuess: (letter: string) => void;
+  focusMode: boolean;
+}) {
+  const wordLength = question.wordLength ?? 0;
+  const livesLeft = HANGMAN_MAX_WRONG - state.wrong;
+  const finished = livesLeft <= 0 || Object.keys(state.revealed).length === wordLength;
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-center gap-1.5">
+        {Array.from({ length: HANGMAN_MAX_WRONG }).map((_, i) => (
+          <Heart
+            key={i}
+            size={20}
+            className={i < livesLeft ? "text-[var(--red)]" : "text-[var(--muted)]"}
+            fill={i < livesLeft ? "currentColor" : "none"}
+          />
+        ))}
+      </div>
+
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {Array.from({ length: wordLength }).map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "w-9 h-11 border-b-4 grid place-items-center font-[family-name:var(--font-mono)] text-xl font-bold uppercase",
+              focusMode ? "border-white/40" : "border-[var(--line)]"
+            )}
+          >
+            {state.revealed[i] ?? ""}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8 grid grid-cols-7 sm:grid-cols-9 gap-1.5">
+        {ALPHABET.map((letter) => {
+          const guessed = state.guessed.includes(letter);
+          const wasCorrect = guessed && Object.values(state.revealed).includes(letter);
+          return (
+            <button
+              key={letter}
+              onClick={() => onGuess(letter)}
+              disabled={guessed || finished}
+              className={cn(
+                "aspect-square border-2 grid place-items-center font-[family-name:var(--font-mono)] font-bold uppercase text-sm transition-all",
+                focusMode ? "border-white/30" : "border-[var(--line)]",
+                !guessed && !finished && (focusMode ? "hover:border-[var(--yellow)]" : "hover:bg-[var(--yellow)] hover:text-black"),
+                guessed && wasCorrect && "bg-[var(--green)] text-black",
+                guessed && !wasCorrect && "bg-[var(--red)] text-black opacity-60"
+              )}
+            >
+              {letter}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

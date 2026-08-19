@@ -84,6 +84,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       // the whole array is withheld too — sending it would just be the
       // answer key with one field removed.
       options: q.type === "fill_blank" ? [] : q.options.map((o) => ({ id: o.id, label: o.label, text: o.text })),
+      // Hangman: the word's length is safe to reveal (renders the blank
+      // tiles) but never the word itself — letters come from /hangman-guess.
+      wordLength: challenge.type === "hangman" ? q.options.find((o) => o.isCorrect)?.text.length ?? null : null,
     })),
   });
 }
