@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Flame, Sparkle, Trophy } from "lucide-react";
+import { Flame, Sparkle } from "lucide-react";
 import { LEVELS, LEVEL_ORDER, CHALLENGE_DAY_TITLES } from "@/lib/levels";
 import { ChallengeDayIcon } from "@/components/shared/challenge-day-icon";
 import { ThemeToggleButton } from "@/components/shared/theme-toggle-button";
@@ -240,13 +240,19 @@ function SevenDayPreview() {
 function Prize() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-20 border-b-2 border-[var(--line)]">
-      <div className="border-2 border-[var(--line)] bg-[var(--yellow)] text-black p-10 sm:p-16 text-center hard-shadow-lg relative overflow-hidden">
+      <div className="border-2 border-[var(--line)] bg-[var(--yellow)] text-black p-8 sm:p-12 text-center hard-shadow-lg relative overflow-hidden">
         <div className="absolute inset-0 dot-grid" aria-hidden />
-        <Trophy size={40} strokeWidth={2} className="relative mx-auto text-black" />
-        <p className="relative mt-4 font-[family-name:var(--font-mono)] text-xs font-bold uppercase tracking-[0.3em]">Grand prize</p>
-        <p className="relative mt-4 font-[family-name:var(--font-display)] text-5xl sm:text-6xl leading-none">1 Year</p>
-        <p className="relative mt-2 font-[family-name:var(--font-display)] text-2xl sm:text-3xl">Ustoz AI Premium</p>
-        <p className="relative mt-4 font-[family-name:var(--font-mono)] text-sm">Only one winner. Will it be you?</p>
+        <div className="relative mx-auto w-full max-w-xs sm:max-w-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/prize-trophy.png"
+            alt="Grand prize: 1 Year Ustoz AI Premium"
+            className="w-full h-auto"
+          />
+        </div>
+        <p className="relative mt-2 font-[family-name:var(--font-mono)] text-sm font-bold uppercase tracking-wide">
+          Will it be you?
+        </p>
       </div>
     </section>
   );
