@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Flame, Sparkle, Trophy } from "lucide-react";
 import { LEVELS, LEVEL_ORDER, CHALLENGE_DAY_TITLES } from "@/lib/levels";
 import { ChallengeDayIcon } from "@/components/shared/challenge-day-icon";
+import { ThemeToggleButton } from "@/components/shared/theme-toggle-button";
 
 export default function LandingPage() {
   return (
@@ -31,12 +32,15 @@ function TopBar() {
           <Link href="#how-it-works" className="hover:text-[var(--blue)]">How it works</Link>
           <Link href="/leaderboard" className="hover:text-[var(--blue)]">Leaderboard</Link>
         </div>
-        <Link
-          href="/onboarding"
-          className="font-[family-name:var(--font-mono)] font-bold text-sm uppercase tracking-wide border-2 border-[var(--line)] bg-[var(--yellow)] text-black px-4 py-2 hard-shadow-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-        >
-          Start →
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggleButton />
+          <Link
+            href="/onboarding"
+            className="font-[family-name:var(--font-mono)] font-bold text-sm uppercase tracking-wide border-2 border-[var(--line)] bg-[var(--yellow)] text-black px-4 py-2 hard-shadow-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+          >
+            Start →
+          </Link>
+        </div>
       </div>
     </header>
   );

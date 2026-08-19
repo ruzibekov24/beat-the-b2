@@ -139,6 +139,7 @@ model ChallengeQuestion {
   prompt        String
   points        Int           @default(10)
   explanation   String?
+  timeLimitSec  Int? // per-question countdown; null = no per-question limit
 
   options       ChallengeOption[]
   answers       ChallengeAnswer[]
@@ -192,7 +193,8 @@ model ChallengeAnswer {
   questionId    String
   question      ChallengeQuestion @relation(fields: [questionId], references: [id])
 
-  selectedOptionId String?
+  selectedOptionId String? // multiple_choice / true_false
+  textAnswer    String? // fill_blank — free-text submission
   isCorrect     Boolean           @default(false)
   pointsAwarded Int               @default(0)
 

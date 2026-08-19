@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
 import { LEVELS, type LevelKey } from "@/lib/levels";
@@ -13,9 +14,11 @@ interface ListeningMaterial {
   durationSec: number | null;
   isPublished: boolean;
   isDemo: boolean;
+  challenge: { id: string } | null;
 }
 
 export default function AdminListeningPage() {
+  const router = useRouter();
   const [items, setItems] = useState<ListeningMaterial[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -41,6 +44,20 @@ export default function AdminListeningPage() {
     if (!confirm("Delete this listening material?")) return;
     await fetch(`/api/admin/listening/${id}`, { method: "DELETE" });
     load();
+  }
+
+  async function goToQuestions(item: ListeningMaterial, day: number) {
+    if (item.challenge) {
+      router.push(`/admin/challenges/${item.challenge.id}`);
+      return;
+    }
+    const res = await fetch(`/api/admin/listening/${item.id}/challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ day }),
+    });
+    const d = await res.json();
+    if (d.challengeId) router.push(`/admin/challenges/${d.challengeId}`);
   }
 
   return (
@@ -83,6 +100,7 @@ export default function AdminListeningPage() {
                           Delete
                         </button>
                       </div>
+                      <QuestionsAction item={item} onGo={goToQuestions} />
                     </div>
                   </div>
                 </div>
@@ -97,14 +115,51 @@ export default function AdminListeningPage() {
   );
 }
 
+function QuestionsAction({
+  item,
+  onGo,
+}: {
+  item: ListeningMaterial;
+  onGo: (item: ListeningMaterial, day: number) => void;
+}) {
+  const [day, setDay] = useState(1);
+
+  if (item.challenge) {
+    return (
+      <button onClick={() => onGo(item, day)} className="text-emerald-400 hover:underline text-xs font-semibold">
+        Manage questions →
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] text-white/40">Day</span>
+      <input
+        type="number"
+        min={1}
+        max={7}
+        value={day}
+        onChange={(e) => setDay(Number(e.target.value))}
+        className="w-12 border border-white/30 bg-black px-1.5 py-1 text-xs outline-none"
+      />
+      <button onClick={() => onGo(item, day)} className="text-emerald-400 hover:underline text-xs font-semibold whitespace-nowrap">
+        + Add questions →
+      </button>
+    </div>
+  );
+}
+
 function ListeningForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [level, setLevel] = useState<LevelKey>("B2");
+  const [day, setDay] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function save() {
+  async function save(thenAddQuestions: boolean) {
     if (!title.trim() || !file) {
       setError("Title and an audio file are required.");
       return;
@@ -118,12 +173,28 @@ function ListeningForm({ onClose, onSaved }: { onClose: () => void; onSaved: () 
     form.append("audio", file);
 
     const res = await fetch("/api/admin/listening", { method: "POST", body: form });
-    setSaving(false);
     if (!res.ok) {
+      setSaving(false);
       const d = await res.json().catch(() => ({}));
       setError(d.error ?? "Could not upload audio.");
       return;
     }
+    const { material } = await res.json();
+
+    if (thenAddQuestions) {
+      const chRes = await fetch(`/api/admin/listening/${material.id}/challenge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ day }),
+      });
+      const d = await chRes.json();
+      setSaving(false);
+      onSaved();
+      if (d.challengeId) router.push(`/admin/challenges/${d.challengeId}`);
+      return;
+    }
+
+    setSaving(false);
     onSaved();
     onClose();
   }
@@ -139,15 +210,28 @@ function ListeningForm({ onClose, onSaved }: { onClose: () => void; onSaved: () 
             onChange={(e) => setTitle(e.target.value)}
             className="w-full border-2 border border-white/30 bg-black px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value as LevelKey)}
-            className="w-full border-2 border border-white/30 bg-black px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {Object.values(LEVELS).map((l) => (
-              <option key={l.key} value={l.key}>{l.label}</option>
-            ))}
-          </select>
+          <div className="flex gap-3">
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value as LevelKey)}
+              className="flex-1 border-2 border border-white/30 bg-black px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {Object.values(LEVELS).map((l) => (
+                <option key={l.key} value={l.key}>{l.label}</option>
+              ))}
+            </select>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/50 whitespace-nowrap">Day</span>
+              <input
+                type="number"
+                min={1}
+                max={7}
+                value={day}
+                onChange={(e) => setDay(Number(e.target.value))}
+                className="w-16 border-2 border border-white/30 bg-black px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
           <input
             type="file"
             accept="audio/*"
@@ -158,8 +242,15 @@ function ListeningForm({ onClose, onSaved }: { onClose: () => void; onSaved: () 
         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
         <div className="mt-5 flex gap-3">
           <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={save} disabled={saving}>{saving ? "Uploading…" : "Save"}</Button>
+          <Button className="flex-1" onClick={() => save(false)} disabled={saving}>{saving ? "Uploading…" : "Save"}</Button>
         </div>
+        <button
+          onClick={() => save(true)}
+          disabled={saving}
+          className="mt-3 w-full text-center text-xs text-emerald-400 hover:underline font-semibold"
+        >
+          Save & add questions now →
+        </button>
       </div>
     </div>
   );

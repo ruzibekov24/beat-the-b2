@@ -36,6 +36,7 @@ const updateSchema = z.object({
         prompt: z.string().min(1),
         points: z.number().int().min(1),
         explanation: z.string().optional(),
+        timeLimitSec: z.number().int().min(1).nullable().optional(),
         options: z.array(
           z.object({
             label: z.string(),
@@ -82,6 +83,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             prompt: q.prompt,
             points: q.points,
             explanation: q.explanation,
+            timeLimitSec: q.timeLimitSec ?? null,
             options: { create: q.options },
           },
         });

@@ -7,7 +7,10 @@ export async function GET() {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const materials = await db.readingMaterial.findMany({ orderBy: { createdAt: "desc" } });
+  const materials = await db.readingMaterial.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { challenge: { select: { id: true } } },
+  });
   return NextResponse.json({ materials });
 }
 

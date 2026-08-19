@@ -64,8 +64,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       order: q.order,
       type: q.type,
       prompt: q.prompt,
-      // isCorrect intentionally stripped before reaching the client
-      options: q.options.map((o) => ({ id: o.id, label: o.label, text: o.text })),
+      timeLimitSec: q.timeLimitSec,
+      // isCorrect intentionally stripped before reaching the client. For
+      // fill_blank, options ARE the accepted answers with no decoys, so
+      // the whole array is withheld too — sending it would just be the
+      // answer key with one field removed.
+      options: q.type === "fill_blank" ? [] : q.options.map((o) => ({ id: o.id, label: o.label, text: o.text })),
     })),
   });
 }

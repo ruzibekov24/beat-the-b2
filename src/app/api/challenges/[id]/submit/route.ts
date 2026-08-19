@@ -13,6 +13,7 @@ const schema = z.object({
     z.object({
       questionId: z.string(),
       selectedOptionId: z.string().nullable(),
+      textAnswer: z.string().nullable().optional(),
     })
   ),
 });

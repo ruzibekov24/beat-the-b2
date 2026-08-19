@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Maximize, Minimize, X, Swords } from "lucide-react";
+import { Maximize, Minimize, X, Swords, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,7 @@ interface Question {
   order: number;
   type: string;
   prompt: string;
+  timeLimitSec: number | null;
   options: Option[];
 }
 interface StartResponse {
@@ -48,6 +49,9 @@ export default function ChallengePage() {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | null>>({});
+  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
+  const [questionTimeLeft, setQuestionTimeLeft] = useState<number | null>(null);
+  const [timedOut, setTimedOut] = useState<Record<string, boolean>>({});
   const [focusMode, setFocusMode] = useState(false);
   const [confirmLeaveFocus, setConfirmLeaveFocus] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -80,6 +84,45 @@ export default function ChallengePage() {
     return () => clearInterval(interval);
   }, [session, result]);
 
+  // Per-question countdown — independent of the overall challenge timer.
+  // Auto-advances (leaving the question unanswered) when it hits zero.
+  useEffect(() => {
+    if (!session || result) return;
+    const q = session.questions[currentIndex];
+    if (!q?.timeLimitSec) {
+      setQuestionTimeLeft(null);
+      return;
+    }
+    setQuestionTimeLeft(q.timeLimitSec);
+    const interval = setInterval(() => {
+      setQuestionTimeLeft((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimedOut((t) => ({ ...t, [q.id]: true }));
+          goNext();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, session, result]);
+
+  function isAnswered(q: Question): boolean {
+    if (timedOut[q.id]) return true;
+    if (q.type === "fill_blank") return !!textAnswers[q.id]?.trim();
+    return !!answers[q.id];
+  }
+
+  function goNext() {
+    setCurrentIndex((i) => {
+      const isLast = i === (session?.questions.length ?? 1) - 1;
+      return isLast ? i : i + 1;
+    });
+  }
+
   const toggleFocusMode = useCallback(async () => {
     if (!focusMode) {
       try {
@@ -110,7 +153,8 @@ export default function ChallengePage() {
         timeTakenSec: elapsedSec,
         answers: session.questions.map((q) => ({
           questionId: q.id,
-          selectedOptionId: answers[q.id] ?? null,
+          selectedOptionId: q.type === "fill_blank" ? null : answers[q.id] ?? null,
+          textAnswer: q.type === "fill_blank" ? textAnswers[q.id] ?? null : null,
         })),
       }),
     });
@@ -128,8 +172,13 @@ export default function ChallengePage() {
     setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
     setTimeout(() => {
       const isLast = currentIndex === (session?.questions.length ?? 1) - 1;
-      if (!isLast) setCurrentIndex((i) => i + 1);
+      if (!isLast) goNext();
     }, 350);
+  }
+
+  function confirmTextAnswer(questionId: string) {
+    if (!textAnswers[questionId]?.trim()) return;
+    goNext();
   }
 
   if (error) return <ErrorScreen message={error} onBack={() => router.push("/home")} />;
@@ -137,8 +186,8 @@ export default function ChallengePage() {
   if (!session) return <LoadingScreen />;
 
   const question = session.questions[currentIndex];
-  const progress = ((currentIndex + (answers[question.id] ? 1 : 0)) / session.questions.length) * 100;
-  const answeredAll = session.questions.every((q) => answers[q.id]);
+  const progress = ((currentIndex + (isAnswered(question) ? 1 : 0)) / session.questions.length) * 100;
+  const answeredAll = session.questions.every(isAnswered);
 
   return (
     <div
@@ -158,6 +207,18 @@ export default function ChallengePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {questionTimeLeft !== null && (
+            <span
+              className={cn(
+                "font-[family-name:var(--font-mono)] text-sm font-bold border-2 px-3 py-1",
+                questionTimeLeft <= 3
+                  ? "border-[var(--red)] text-[var(--red)] animate-pulse"
+                  : "border-current"
+              )}
+            >
+              {questionTimeLeft}s
+            </span>
+          )}
           <span className="font-[family-name:var(--font-mono)] text-sm font-bold border-2 border-current px-3 py-1">
             {formatTime(elapsedSec)}
           </span>
@@ -188,33 +249,85 @@ export default function ChallengePage() {
             {question.prompt}
           </p>
 
-          <div className="mt-8 grid gap-3">
-            {question.options.map((opt) => {
-              const selected = answers[question.id] === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => selectOption(question.id, opt.id)}
-                  disabled={!!answers[question.id]}
-                  className={cn(
-                    "text-left border-2 px-5 py-4 transition-all flex items-center gap-4 font-[family-name:var(--font-mono)]",
-                    focusMode ? "border-white/30 hover:border-[var(--yellow)]" : "border-[var(--line)] hover:bg-[var(--yellow)] hover:text-black",
-                    selected && "bg-[var(--yellow)] text-black"
-                  )}
+          {question.type === "fill_blank" ? (
+            <div className="mt-8">
+              <input
+                type="text"
+                autoFocus
+                value={textAnswers[question.id] ?? ""}
+                onChange={(e) => setTextAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmTextAnswer(question.id);
+                }}
+                placeholder="Type your answer…"
+                className={cn(
+                  "w-full border-2 px-5 py-4 font-[family-name:var(--font-mono)] text-lg bg-transparent outline-none",
+                  focusMode ? "border-white/30 focus:border-[var(--yellow)]" : "border-[var(--line)] focus:bg-[var(--yellow)]/10"
+                )}
+              />
+              {currentIndex < session.questions.length - 1 && (
+                <Button
+                  className="mt-4 w-full"
+                  variant="secondary"
+                  onClick={() => confirmTextAnswer(question.id)}
+                  disabled={!textAnswers[question.id]?.trim()}
                 >
-                  <span
+                  Next
+                </Button>
+              )}
+            </div>
+          ) : question.type === "true_false" ? (
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              {question.options.map((opt) => {
+                const selected = answers[question.id] === opt.id;
+                const isTrue = opt.text.trim().toLowerCase() === "true";
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => selectOption(question.id, opt.id)}
+                    disabled={!!answers[question.id]}
                     className={cn(
-                      "w-8 h-8 grid place-items-center border-2 font-bold text-sm shrink-0",
-                      selected ? "bg-black text-[var(--yellow)] border-black" : "border-current"
+                      "border-2 py-10 flex flex-col items-center gap-2 font-[family-name:var(--font-display)] text-lg uppercase transition-all",
+                      focusMode ? "border-white/30" : "border-[var(--line)]",
+                      !answers[question.id] && (isTrue ? "hover:bg-[var(--green)]/20" : "hover:bg-[var(--red)]/20"),
+                      selected && (isTrue ? "bg-[var(--green)] text-black" : "bg-[var(--red)] text-black")
                     )}
                   >
-                    {opt.label}
-                  </span>
-                  <span>{opt.text}</span>
-                </button>
-              );
-            })}
-          </div>
+                    {isTrue ? <Check size={32} /> : <X size={32} />}
+                    {opt.text}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-8 grid gap-3">
+              {question.options.map((opt) => {
+                const selected = answers[question.id] === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => selectOption(question.id, opt.id)}
+                    disabled={!!answers[question.id]}
+                    className={cn(
+                      "text-left border-2 px-5 py-4 transition-all flex items-center gap-4 font-[family-name:var(--font-mono)]",
+                      focusMode ? "border-white/30 hover:border-[var(--yellow)]" : "border-[var(--line)] hover:bg-[var(--yellow)] hover:text-black",
+                      selected && "bg-[var(--yellow)] text-black"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "w-8 h-8 grid place-items-center border-2 font-bold text-sm shrink-0",
+                        selected ? "bg-black text-[var(--yellow)] border-black" : "border-current"
+                      )}
+                    >
+                      {opt.label}
+                    </span>
+                    <span>{opt.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {answeredAll && (
             <Button className="mt-8 w-full" size="lg" onClick={submitChallenge} disabled={submitting}>

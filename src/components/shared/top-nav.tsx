@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon } from "lucide-react";
-import { useTheme } from "./theme-provider";
+import { ThemeToggleButton } from "./theme-toggle-button";
 import { LevelBadge } from "./level-badge";
 import type { LevelKey } from "@/lib/levels";
 import { cn } from "@/lib/utils";
@@ -16,7 +15,6 @@ export function TopNav({
   level?: LevelKey | null;
 }) {
   const pathname = usePathname();
-  const { theme, toggle } = useTheme();
 
   const links = [
     { href: "/home", label: "Home" },
@@ -50,13 +48,7 @@ export function TopNav({
 
         <div className="flex items-center gap-3">
           {level && <LevelBadge level={level} locked size="sm" className="hidden sm:inline-flex" />}
-          <button
-            onClick={toggle}
-            aria-label="Toggle theme"
-            className="w-9 h-9 grid place-items-center border-2 border-[var(--line)] hover:bg-[var(--yellow)] hover:text-black"
-          >
-            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-          </button>
+          <ThemeToggleButton />
           {userName && (
             <div className="w-9 h-9 border-2 border-[var(--line)] bg-[var(--ink)] text-[var(--bg)] grid place-items-center font-[family-name:var(--font-mono)] font-bold text-sm">
               {userName[0]?.toUpperCase()}

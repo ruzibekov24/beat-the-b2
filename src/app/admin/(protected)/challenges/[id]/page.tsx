@@ -18,8 +18,16 @@ interface Question {
   prompt: string;
   points: number;
   explanation?: string | null;
+  timeLimitSec?: number | null;
   options: Option[];
 }
+
+const TYPE_LABELS: Record<string, string> = {
+  multiple_choice: "Multiple choice",
+  fill_blank: "Written answer",
+  true_false: "True / False",
+  matching: "Matching",
+};
 interface ChallengeDetail {
   id: string;
   day: number;
@@ -31,14 +39,35 @@ interface ChallengeDetail {
 
 const EXAMPLE_JSON = `[
   {
+    "type": "multiple_choice",
     "prompt": "Choose the word closest in meaning to 'meticulous'.",
     "points": 10,
+    "timeLimitSec": 20,
     "explanation": "Meticulous means very careful and precise about details.",
     "options": [
       { "label": "A", "text": "careless", "isCorrect": false },
       { "label": "B", "text": "thorough", "isCorrect": true },
       { "label": "C", "text": "quick", "isCorrect": false },
       { "label": "D", "text": "loud", "isCorrect": false }
+    ]
+  },
+  {
+    "type": "true_false",
+    "prompt": "'Meticulous' means careless about details.",
+    "points": 10,
+    "timeLimitSec": 10,
+    "options": [
+      { "label": "True", "text": "True", "isCorrect": false },
+      { "label": "False", "text": "False", "isCorrect": true }
+    ]
+  },
+  {
+    "type": "fill_blank",
+    "prompt": "Type the word: someone very careful and precise is ______.",
+    "points": 15,
+    "timeLimitSec": 30,
+    "options": [
+      { "label": "", "text": "meticulous", "isCorrect": true }
     ]
   }
 ]`;
@@ -83,6 +112,7 @@ export default function AdminChallengeDetailPage() {
       prompt: q.prompt,
       points: q.points ?? 10,
       explanation: q.explanation ?? undefined,
+      timeLimitSec: q.timeLimitSec ?? undefined,
       options: q.options ?? [],
     }));
 
@@ -150,21 +180,39 @@ export default function AdminChallengeDetailPage() {
             <div className="divide-y divide-white/10">
               {challenge.questions.map((q, i) => (
                 <div key={q.id ?? i} className="p-5">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 border border-white/30 text-white/50">
+                      {TYPE_LABELS[q.type] ?? q.type}
+                    </span>
+                    {q.timeLimitSec != null && (
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 border border-blue-400/50 text-blue-400">
+                        {q.timeLimitSec}s
+                      </span>
+                    )}
+                    <span className="text-[10px] text-white/40">{q.points} pts</span>
+                  </div>
                   <p className="text-sm font-semibold">
                     {i + 1}. {q.prompt}
                   </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {q.options.map((o, oi) => (
-                      <div
-                        key={oi}
-                        className={`text-xs px-2 py-1.5 border ${
-                          o.isCorrect ? "border-emerald-400 text-emerald-400" : "border-white/20 text-white/60"
-                        }`}
-                      >
-                        {o.label}. {o.text}
-                      </div>
-                    ))}
-                  </div>
+                  {q.type === "fill_blank" ? (
+                    <p className="mt-2 text-xs text-emerald-400">
+                      Accepted: {q.options.map((o) => o.text).join(", ")}
+                    </p>
+                  ) : (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {q.options.map((o, oi) => (
+                        <div
+                          key={oi}
+                          className={`text-xs px-2 py-1.5 border ${
+                            o.isCorrect ? "border-emerald-400 text-emerald-400" : "border-white/20 text-white/60"
+                          }`}
+                        >
+                          {o.label ? `${o.label}. ` : ""}
+                          {o.text}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {q.explanation && (
                     <p className="mt-2 text-xs text-white/40 italic">{q.explanation}</p>
                   )}

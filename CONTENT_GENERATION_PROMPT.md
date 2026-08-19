@@ -30,20 +30,33 @@ English test platform. Levels are A1_A2 (beginner), B1 (intermediate),
 B2 (upper-intermediate), C1 (advanced) — the whole platform is named
 after the B2 level.
 
-Write [NUMBER, e.g. 8] multiple-choice English questions for:
+Write [NUMBER, e.g. 8] English questions for:
 - Level: [A1_A2 / B1 / B2 / C1]
 - Focus: [e.g. "vocabulary", "grammar — mixed tenses", "reading
   comprehension for the passage below", "listening comprehension for the
   script below"]
 - Day: [1-7] of the competition (day 7 should feel like a tougher final)
+- Mix of formats: [e.g. "mostly multiple_choice, 2 true_false, 1
+  fill_blank" — or just "multiple_choice only" for a plain quiz]
 
 Rules:
-- Each question has exactly 4 options, exactly one correct.
-- Distractors must be plausible, not silly or obviously wrong — a real
-  test-taker at this level should have to think.
+- Three question types are available — pick per the mix requested above:
+  - "multiple_choice": exactly 4 options, exactly one correct.
+  - "true_false": exactly 2 options, texts must be literally "True" and
+    "False", exactly one correct.
+  - "fill_blank": a free-text answer. "options" holds every acceptable
+    spelling/variant (e.g. "color" and "colour"), all isCorrect: true, no
+    incorrect options. The prompt must make the expected answer
+    unambiguous (e.g. "Type the missing word: ...").
+- Distractors (multiple_choice/true_false) must be plausible, not silly or
+  obviously wrong — a real test-taker at this level should have to think.
 - No two questions test the exact same word/rule.
 - Write a one-sentence explanation for each correct answer.
-- Points: 10 for straightforward questions, 15 for genuinely hard ones.
+- Points: 10 for straightforward questions, 15 for genuinely hard ones,
+  20 for fill_blank (recalling > recognizing is harder).
+- timeLimitSec: a per-question countdown in seconds — omit (or null) for
+  no limit. Guideline: ~20s multiple_choice, ~10s true_false, ~30s
+  fill_blank; tighten by ~30% on day 7 for a "final round" feel.
 - Keep prompts and options concise — this renders on a mobile screen.
 
 Output ONLY a JSON array, no prose, no markdown fences, in exactly this
@@ -51,14 +64,36 @@ shape:
 
 [
   {
+    "type": "multiple_choice",
     "prompt": "Question text here.",
     "points": 10,
+    "timeLimitSec": 20,
     "explanation": "One sentence on why the correct answer is correct.",
     "options": [
       { "label": "A", "text": "...", "isCorrect": false },
       { "label": "B", "text": "...", "isCorrect": true },
       { "label": "C", "text": "...", "isCorrect": false },
       { "label": "D", "text": "...", "isCorrect": false }
+    ]
+  },
+  {
+    "type": "true_false",
+    "prompt": "A true/false statement here.",
+    "points": 10,
+    "timeLimitSec": 10,
+    "options": [
+      { "label": "True", "text": "True", "isCorrect": false },
+      { "label": "False", "text": "False", "isCorrect": true }
+    ]
+  },
+  {
+    "type": "fill_blank",
+    "prompt": "Type the missing word: ...",
+    "points": 20,
+    "timeLimitSec": 30,
+    "options": [
+      { "label": "", "text": "answer", "isCorrect": true },
+      { "label": "", "text": "accepted variant spelling", "isCorrect": true }
     ]
   }
 ]

@@ -28,13 +28,18 @@ export async function getMultiplierForLevel(level: LevelKey): Promise<number> {
  * - Applies the user's LOCKED, server-stored level multiplier
  * - Persists everything atomically
  *
- * `submittedAnswers` is just { questionId, selectedOptionId } pairs —
- * the client never tells us what's correct or how many points to award.
+ * `submittedAnswers` is just { questionId, selectedOptionId, textAnswer }
+ * pairs — the client never tells us what's correct or how many points to
+ * award.
  */
+function normalizeText(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 export async function gradeAttempt(params: {
   attemptId: string;
   userId: string;
-  submittedAnswers: { questionId: string; selectedOptionId: string | null }[];
+  submittedAnswers: { questionId: string; selectedOptionId: string | null; textAnswer?: string | null }[];
   timeTakenSec: number;
 }) {
   const { attemptId, userId, submittedAnswers, timeTakenSec } = params;
@@ -59,9 +64,17 @@ export async function gradeAttempt(params: {
 
     for (const question of attempt.challenge.questions) {
       const submitted = submittedAnswers.find((a) => a.questionId === question.id);
-      const correctOption = question.options.find((o) => o.isCorrect);
-      const isCorrect =
-        !!submitted?.selectedOptionId && submitted.selectedOptionId === correctOption?.id;
+
+      let isCorrect: boolean;
+      if (question.type === "fill_blank") {
+        const answerText = submitted?.textAnswer?.trim();
+        isCorrect =
+          !!answerText &&
+          question.options.some((o) => o.isCorrect && normalizeText(o.text) === normalizeText(answerText));
+      } else {
+        const correctOption = question.options.find((o) => o.isCorrect);
+        isCorrect = !!submitted?.selectedOptionId && submitted.selectedOptionId === correctOption?.id;
+      }
 
       if (isCorrect) {
         correctCount += 1;
@@ -74,11 +87,13 @@ export async function gradeAttempt(params: {
           attemptId,
           questionId: question.id,
           selectedOptionId: submitted?.selectedOptionId ?? null,
+          textAnswer: submitted?.textAnswer ?? null,
           isCorrect,
           pointsAwarded: isCorrect ? question.points : 0,
         },
         update: {
           selectedOptionId: submitted?.selectedOptionId ?? null,
+          textAnswer: submitted?.textAnswer ?? null,
           isCorrect,
           pointsAwarded: isCorrect ? question.points : 0,
         },
