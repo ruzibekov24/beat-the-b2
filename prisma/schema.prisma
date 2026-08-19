@@ -75,6 +75,7 @@ model User {
   totalPoints       Int      @default(0)
   dayStreak         Int      @default(0)
   lastActiveDay     Int?     // last competition day (1-7) user was active on
+  lastWheelSpinDay  Int?     // last competition day (1-7) the Wheel of Fortune was spun — one spin per day
 
   referralCode      String   @unique
   referredById      String?

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { TopNav } from "@/components/shared/top-nav";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { ChallengeDayIcon } from "@/components/shared/challenge-day-icon";
+import { DailyWheel } from "@/components/shared/daily-wheel";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Flame, Star, Check } from "lucide-react";
@@ -28,6 +29,7 @@ interface HomeData {
   }[];
   missions: { id: string; title: string; icon: string | null; points: number }[];
   dayStreak: number;
+  wheelCanSpin: boolean;
 }
 
 interface MeData {
@@ -42,6 +44,12 @@ export default function HomePage() {
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [wheelResult, setWheelResult] = useState<{ points: number; label: string } | null>(null);
+
+  function handleWheelSpun(points: number, label: string) {
+    setWheelResult({ points, label });
+    setData((prev) => (prev ? { ...prev, wheelCanSpin: false } : prev));
+  }
 
   useEffect(() => {
     (async () => {
@@ -131,6 +139,18 @@ export default function HomePage() {
             ))}
           </div>
         )}
+
+        <h2 className="mt-10 font-[family-name:var(--font-mono)] text-xs font-bold uppercase tracking-[0.3em] text-[var(--muted)]">
+          Daily wheel
+        </h2>
+        <Card className="mt-4 p-8 flex flex-col items-center">
+          <DailyWheel canSpin={data.wheelCanSpin} onSpun={handleWheelSpun} />
+          {wheelResult && (
+            <p className="mt-5 font-[family-name:var(--font-mono)] font-bold text-[var(--green)] text-center">
+              You won {wheelResult.label}! (+{wheelResult.points} XP)
+            </p>
+          )}
+        </Card>
 
         {data.missions.length > 0 && (
           <>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { getSession } from "@/lib/server/auth";
 import { CHALLENGE_DAY_TITLES } from "@/lib/levels";
+import { getCurrentDay } from "@/lib/server/competition-day";
 
 /**
  * Computes the current competition day from CompetitionSettings.startDate
@@ -15,14 +16,7 @@ export async function GET() {
   const user = await db.user.findUnique({ where: { id: session.userId } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const settings = await db.competitionSettings.findUnique({ where: { id: "singleton" } });
-
-  let currentDay = 1;
-  if (settings?.startDate) {
-    const diffMs = Date.now() - settings.startDate.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
-    currentDay = Math.min(Math.max(diffDays, 1), 7);
-  }
+  const currentDay = await getCurrentDay();
 
   const challenges = await db.challenge.findMany({
     where: {
@@ -70,5 +64,6 @@ export async function GET() {
     challenges: challengesWithStatus,
     missions,
     dayStreak: user.dayStreak,
+    wheelCanSpin: user.lastWheelSpinDay !== currentDay,
   });
 }
