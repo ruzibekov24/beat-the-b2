@@ -28,7 +28,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing title, level, or audio file" }, { status: 400 });
   }
 
-  const audioUrl = await uploadAudioFile(file);
+  let audioUrl: string;
+  try {
+    audioUrl = await uploadAudioFile(file);
+  } catch (err) {
+    console.error("uploadAudioFile failed", err);
+    const message = err instanceof Error ? err.message : "Unknown storage error";
+    return NextResponse.json({ error: `Audio upload failed: ${message}` }, { status: 500 });
+  }
 
   const material = await db.listeningMaterial.create({
     data: {
