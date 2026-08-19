@@ -121,5 +121,5 @@ export async function gradeAttempt(params: {
     });
 
     return updatedAttempt;
-  });
+  }, { timeout: 20000 });
 }

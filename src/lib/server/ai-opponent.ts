@@ -6,6 +6,8 @@ export interface AiOpponentResult {
   accuracy: number;
   timeTakenSec: number;
   commentary?: string;
+  /** Per-question correct/incorrect, in question order — powers the live round-by-round reveal. */
+  perQuestion: boolean[];
 }
 
 /**
@@ -29,10 +31,11 @@ const ANTHROPIC_MODEL = "claude-haiku-4-5";
 function simulateStatistically(level: LevelKey, totalQuestions: number): AiOpponentResult {
   const { accuracy, avgSecPerQuestion } = DIFFICULTY[level];
 
-  let correctCount = 0;
+  const perQuestion: boolean[] = [];
   for (let i = 0; i < totalQuestions; i++) {
-    if (Math.random() < accuracy) correctCount++;
+    perQuestion.push(Math.random() < accuracy);
   }
+  const correctCount = perQuestion.filter(Boolean).length;
 
   const jitterFactor = 0.85 + Math.random() * 0.3;
   const timeTakenSec = Math.round(totalQuestions * avgSecPerQuestion * jitterFactor);
@@ -42,6 +45,7 @@ function simulateStatistically(level: LevelKey, totalQuestions: number): AiOppon
     totalCount: totalQuestions,
     accuracy: totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0,
     timeTakenSec,
+    perQuestion,
   };
 }
 
@@ -123,5 +127,6 @@ Respond with ONLY strict JSON, no prose, no markdown fences, in this exact shape
     accuracy: Math.round((correctCount / questions.length) * 100),
     timeTakenSec,
     commentary: typeof parsed.commentary === "string" ? parsed.commentary.slice(0, 200) : undefined,
+    perQuestion: parsed.results as boolean[],
   };
 }

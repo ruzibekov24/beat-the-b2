@@ -179,6 +179,11 @@ model ChallengeAttempt {
   rawPoints     Int            @default(0) // sum of base question points earned
   finalPoints   Int            @default(0) // rawPoints * level multiplier, server-computed
 
+  // ai_battle only — the AI opponent's per-question correct/incorrect
+  // answers, precomputed once at start and revealed round-by-round as
+  // the user answers each question live (see api/challenges/[id]/battle-round).
+  aiAnswers     Json?
+
   answers       ChallengeAnswer[]
 
   @@unique([userId, challengeId, status], name: "uniq_active_attempt") // app logic further guards duplicate submits

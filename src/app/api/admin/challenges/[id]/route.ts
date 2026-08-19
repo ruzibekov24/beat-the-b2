@@ -91,7 +91,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     return updated;
-  });
+  }, { timeout: 20000 });
 
   return NextResponse.json({ challenge });
 }

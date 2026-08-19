@@ -21,8 +21,12 @@ interface Question {
 }
 interface StartResponse {
   attemptId: string;
-  challenge: { id: string; day: number; title: string; subtitle: string | null; timeLimitSec: number | null };
+  challenge: { id: string; day: number; title: string; subtitle: string | null; type: string; timeLimitSec: number | null };
   questions: Question[];
+}
+interface BattleReveal {
+  userCorrect: boolean;
+  aiCorrect: boolean;
 }
 interface AiOpponentResult {
   correctCount: number;
@@ -57,6 +61,8 @@ export default function ChallengePage() {
   const [elapsedSec, setElapsedSec] = useState(0);
   const [result, setResult] = useState<SubmitResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [battleReveal, setBattleReveal] = useState<BattleReveal | null>(null);
+  const [battleScore, setBattleScore] = useState({ user: 0, ai: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef<number>(Date.now());
 
@@ -167,9 +173,38 @@ export default function ChallengePage() {
     setResult(await res.json());
   }
 
+  const isLiveBattle = session?.challenge.type === "ai_battle";
+
+  async function revealBattleRound(questionId: string, selectedOptionId: string | null, textAnswer: string | null) {
+    if (!session) return;
+    try {
+      const res = await fetch(`/api/challenges/${params.id}/battle-round`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attemptId: session.attemptId, questionId, selectedOptionId, textAnswer }),
+      });
+      if (res.ok) {
+        const { userCorrect, aiCorrect } = await res.json();
+        setBattleReveal({ userCorrect, aiCorrect });
+        setBattleScore((s) => ({ user: s.user + (userCorrect ? 1 : 0), ai: s.ai + (aiCorrect ? 1 : 0) }));
+      }
+    } catch {
+      // Live reveal is a UX flourish, not scoring — a failed round-check must
+      // never block progress. Official scoring still happens at /submit.
+    }
+    setTimeout(() => {
+      setBattleReveal(null);
+      goNext();
+    }, 1700);
+  }
+
   function selectOption(questionId: string, optionId: string) {
     if (answers[questionId]) return;
     setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
+    if (isLiveBattle) {
+      revealBattleRound(questionId, optionId, null);
+      return;
+    }
     setTimeout(() => {
       const isLast = currentIndex === (session?.questions.length ?? 1) - 1;
       if (!isLast) goNext();
@@ -178,6 +213,10 @@ export default function ChallengePage() {
 
   function confirmTextAnswer(questionId: string) {
     if (!textAnswers[questionId]?.trim()) return;
+    if (isLiveBattle) {
+      revealBattleRound(questionId, null, textAnswers[questionId]);
+      return;
+    }
     goNext();
   }
 
@@ -207,6 +246,13 @@ export default function ChallengePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {isLiveBattle && (
+            <span className="font-[family-name:var(--font-mono)] text-sm font-bold border-2 border-current px-3 py-1 flex items-center gap-1.5">
+              <span className="text-[var(--blue)]">{battleScore.user}</span>
+              <Swords size={12} className="text-[var(--muted)]" />
+              <span className="text-[var(--purple)]">{battleScore.ai}</span>
+            </span>
+          )}
           {questionTimeLeft !== null && (
             <span
               className={cn(
@@ -348,6 +394,44 @@ export default function ChallengePage() {
           </div>
         </div>
       )}
+
+      {battleReveal && <RoundReveal reveal={battleReveal} score={battleScore} />}
+    </div>
+  );
+}
+
+function RoundReveal({ reveal, score }: { reveal: BattleReveal; score: { user: number; ai: number } }) {
+  return (
+    <div className="fixed inset-0 bg-black/80 grid place-items-center z-50 px-5">
+      <div className="fight-stamp bg-[var(--paper)] text-[var(--ink)] border-2 border-[var(--line)] px-8 py-8 max-w-xs w-full text-center font-[family-name:var(--font-mono)]">
+        <div className="flex items-center justify-center gap-6">
+          <RoundFace label="YOU" correct={reveal.userCorrect} />
+          <Swords size={20} className="text-[var(--muted)]" />
+          <RoundFace label="AI" correct={reveal.aiCorrect} />
+        </div>
+        <p className="mt-6 text-xs uppercase tracking-widest text-[var(--muted)]">Score</p>
+        <p className="mt-1 text-2xl font-bold">
+          <span className="text-[var(--blue)]">{score.user}</span>
+          <span className="text-[var(--muted)] mx-2">—</span>
+          <span className="text-[var(--purple)]">{score.ai}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RoundFace({ label, correct }: { label: string; correct: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        className={cn(
+          "w-14 h-14 grid place-items-center border-2 border-[var(--line)]",
+          correct ? "bg-[var(--green)]" : "bg-[var(--red)]"
+        )}
+      >
+        {correct ? <Check size={24} className="text-black" /> : <X size={24} className="text-black" />}
+      </div>
+      <p className="text-xs font-bold">{label}</p>
     </div>
   );
 }

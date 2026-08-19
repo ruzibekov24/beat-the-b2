@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { getSession } from "@/lib/server/auth";
+import { simulateAiOpponent } from "@/lib/server/ai-opponent";
+import type { LevelKey } from "@/lib/levels";
 
 /**
  * Starts (or resumes) an attempt for a challenge.
@@ -46,6 +48,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!attempt) {
     attempt = await db.challengeAttempt.create({
       data: { userId: user.id, challengeId, totalCount: challenge.questions.length },
+    });
+  }
+
+  // For a live AI Battle, the opponent's per-question answers are decided
+  // once, up front, and persisted — never recomputed on refresh (that
+  // would let a user "reroll" the AI) and never sent to the client until
+  // each round is revealed via /battle-round.
+  if (challenge.type === "ai_battle" && attempt.aiAnswers === null) {
+    const opponent = await simulateAiOpponent(user.level as LevelKey, challenge.questions.length, challenge.questions);
+    attempt = await db.challengeAttempt.update({
+      where: { id: attempt.id },
+      data: { aiAnswers: opponent.perQuestion },
     });
   }
 
