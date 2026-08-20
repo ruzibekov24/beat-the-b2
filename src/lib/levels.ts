@@ -81,9 +81,9 @@ export function getLevelConfig(level: LevelKey | null | undefined): LevelConfig 
 export const CHALLENGE_DAY_TITLES: Record<number, { title: string; subtitle: string; icon: string }> = {
   1: { title: "PROVE YOUR LEVEL", subtitle: "Level Assessment", icon: "ClipboardCheck" },
   2: { title: "CAN YOU BEAT THE BOT?", subtitle: "AI Bot Battle", icon: "Bot" },
-  3: { title: "LISTEN OR LOSE", subtitle: "Listening Challenge", icon: "Headphones" },
-  4: { title: "VOCABULARY HUNT", subtitle: "Vocabulary Challenge", icon: "BookOpenText" },
-  5: { title: "READING UNDER PRESSURE", subtitle: "Reading Challenge", icon: "BookOpen" },
+  3: { title: "VOCABULARY HUNT", subtitle: "Vocabulary Challenge", icon: "BookOpenText" },
+  4: { title: "READING UNDER PRESSURE", subtitle: "Reading Challenge", icon: "BookOpen" },
+  5: { title: "LISTEN OR LOSE", subtitle: "Listening Challenge", icon: "Headphones" },
   6: { title: "CAN YOU BEAT THE B2?", subtitle: "Main B2 Battle", icon: "Swords" },
   7: { title: "GRAND FINAL", subtitle: "Multi-Round Final", icon: "Trophy" },
 };
