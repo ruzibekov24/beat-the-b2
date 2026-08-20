@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Flame, Sparkle } from "lucide-react";
+import { Sparkle } from "lucide-react";
 import { LEVELS, LEVEL_ORDER, CHALLENGE_DAY_TITLES } from "@/lib/levels";
 import { ChallengeDayIcon } from "@/components/shared/challenge-day-icon";
 import { ThemeToggleButton } from "@/components/shared/theme-toggle-button";
@@ -49,7 +49,9 @@ function TopBar() {
 function Hero() {
   return (
     <section className="relative mx-auto max-w-6xl px-5 pt-14 pb-20 sm:pt-20 sm:pb-28 border-b-2 border-[var(--line)]">
-      <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 lg:gap-8 items-start">
+      {/* The scorecard is 16:9, so it needs a wider column than the old
+          portrait card did — and centring keeps it level with the headline. */}
+      <div className="grid lg:grid-cols-[1fr_1fr] gap-12 lg:gap-10 items-center">
         <div>
           <div className="inline-flex items-center gap-2 border-2 border-[var(--line)] bg-[var(--paper)] px-3 py-1.5 font-[family-name:var(--font-mono)] text-xs font-bold uppercase tracking-widest hard-shadow-sm">
             <span className="w-2 h-2 bg-[var(--red)] rounded-full animate-pulse" />
@@ -89,60 +91,32 @@ function Hero() {
         </div>
 
         {/* Signature element: the exam scorecard, not a gradient stat card */}
-        <ScoreCard />
+        <ScoreboardVideo />
       </div>
     </section>
   );
 }
 
-function ScoreCard() {
+/**
+ * The animated scorecard. The WebM carries its own alpha channel so it sits
+ * directly on the yellow panel; the MP4 fallback has that same yellow baked
+ * in, which keeps the two indistinguishable on browsers without alpha WebM.
+ */
+function ScoreboardVideo() {
   return (
-    <div className="border-2 border-[var(--line)] bg-[var(--paper)] hard-shadow-lg font-[family-name:var(--font-mono)]">
-      <div className="border-b-2 border-[var(--line)] px-5 py-3 flex items-center justify-between bg-[var(--ink)] text-[var(--bg)]">
-        <span className="text-xs font-bold uppercase tracking-widest">Scorecard · Day 6/7</span>
-        <span className="text-xs">#0027</span>
-      </div>
-      <div className="p-5">
-        <p className="text-xs uppercase tracking-widest text-[var(--muted)]">Challenge</p>
-        <p className="mt-1 font-[family-name:var(--font-display)] text-2xl leading-tight normal-case">
-          Can You Beat The B2?
-        </p>
-        <p className="text-sm text-[var(--muted)]">Main B2 Battle — live now</p>
-
-        <div className="mt-5 flex items-center gap-3">
-          <div className="h-3 flex-1 border-2 border-[var(--line)] bg-[var(--bg)] overflow-hidden">
-            <div className="h-full w-[65%] bg-[var(--blue)]" />
-          </div>
-          <span className="text-sm font-bold tabular-nums">13/20</span>
-        </div>
-
-        <div className="mt-6 grid grid-cols-3 border-2 border-[var(--line)] divide-x-2 divide-[var(--line)]">
-          <Stat label="Rank" value="#27" />
-          <Stat label="Points" value="742" />
-          <Stat
-            label="Streak"
-            value={
-              <span className="inline-flex items-center gap-1">
-                5 <Flame size={16} strokeWidth={2.5} className="text-[var(--yellow)]" fill="currentColor" />
-              </span>
-            }
-          />
-        </div>
-
-        <div className="mt-4 border-2 border-dashed border-[var(--line)] px-3 py-2 text-xs text-[var(--muted)] flex items-center justify-between">
-          <span>Someone just passed you.</span>
-          <span className="text-[var(--red)] font-bold">▲ #26</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="text-center py-3">
-      <p className="text-lg font-bold tabular-nums">{value}</p>
-      <p className="text-[10px] uppercase tracking-widest text-[var(--muted)] mt-0.5">{label}</p>
+    <div className="border-2 border-[var(--line)] bg-[var(--yellow)] hard-shadow-lg overflow-hidden">
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        poster="/scoreboard_still.png"
+        aria-label="Animated scorecard: day 6 of 7, rank 27, 742 points, a 5-day streak, and a warning that someone just passed you."
+        className="block w-full aspect-video"
+      >
+        <source src="/scoreboard_transparent_960.webm" type="video/webm" />
+        <source src="/scoreboard_yellow.mp4" type="video/mp4" />
+      </video>
     </div>
   );
 }
