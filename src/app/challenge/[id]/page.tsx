@@ -32,6 +32,8 @@ interface StartResponse {
   attemptId: string;
   challenge: { id: string; day: number; title: string; subtitle: string | null; type: string; timeLimitSec: number | null };
   questions: Question[];
+  reading: { title: string; content: string; timeLimitSec: number | null } | null;
+  listening: { title: string; audioUrl: string; durationSec: number | null } | null;
 }
 interface BattleReveal {
   userCorrect: boolean;
@@ -377,7 +379,10 @@ export default function ChallengePage() {
       </div>
 
       <div className="flex-1 flex items-center justify-center px-5 py-10">
-        <div className="w-full max-w-xl">
+        <div className={cn("w-full", session.reading ? "max-w-3xl" : "max-w-xl")}>
+          {session.reading && <ReadingPassage reading={session.reading} focusMode={focusMode} />}
+          {session.listening && <ListeningPlayer listening={session.listening} focusMode={focusMode} />}
+
           <p className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl leading-snug uppercase">
             {question.prompt}
           </p>
@@ -510,6 +515,62 @@ export default function ChallengePage() {
       )}
 
       {battleReveal && <RoundReveal reveal={battleReveal} score={battleScore} />}
+    </div>
+  );
+}
+
+/**
+ * The passage a reading challenge's questions refer to. Kept scrollable and
+ * pinned above the question so it stays available on every question rather
+ * than only on the first.
+ */
+function ReadingPassage({
+  reading,
+  focusMode,
+}: {
+  reading: { title: string; content: string };
+  focusMode: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "mb-8 border-2 p-5 max-h-[45vh] overflow-y-auto",
+        focusMode ? "border-white/20 bg-white/5" : "border-[var(--line)] bg-black/[0.03]"
+      )}
+    >
+      <p className="font-[family-name:var(--font-mono)] text-xs font-bold uppercase tracking-widest text-[var(--blue)]">
+        {reading.title}
+      </p>
+      <div className="mt-3 space-y-3 text-[15px] leading-relaxed whitespace-pre-wrap">
+        {reading.content
+          .split(/\n\s*\n/)
+          .map((paragraph, i) => <p key={i}>{paragraph.trim()}</p>)}
+      </div>
+    </div>
+  );
+}
+
+/** The audio a listening challenge's questions refer to. */
+function ListeningPlayer({
+  listening,
+  focusMode,
+}: {
+  listening: { title: string; audioUrl: string };
+  focusMode: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "mb-8 border-2 p-5",
+        focusMode ? "border-white/20 bg-white/5" : "border-[var(--line)] bg-black/[0.03]"
+      )}
+    >
+      <p className="font-[family-name:var(--font-mono)] text-xs font-bold uppercase tracking-widest text-[var(--blue)]">
+        {listening.title}
+      </p>
+      <audio controls preload="metadata" src={listening.audioUrl} className="mt-3 w-full">
+        Your browser does not support audio playback.
+      </audio>
     </div>
   );
 }

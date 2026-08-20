@@ -31,7 +31,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const challenge = await db.challenge.findUnique({
     where: { id: challengeId },
-    include: { questions: { orderBy: { order: "asc" }, include: { options: true } } },
+    include: {
+      questions: { orderBy: { order: "asc" }, include: { options: true } },
+      reading: true,
+      listening: true,
+    },
   });
 
   if (!challenge || challenge.status !== "published") {
@@ -82,6 +86,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       type: challenge.type,
       timeLimitSec: challenge.timeLimitSec,
     },
+    // The passage / audio the questions are about. Without these the
+    // reading and listening challenges are unanswerable.
+    reading: challenge.reading
+      ? {
+          title: challenge.reading.title,
+          content: challenge.reading.content,
+          timeLimitSec: challenge.reading.timeLimitSec,
+        }
+      : null,
+    listening: challenge.listening
+      ? {
+          title: challenge.listening.title,
+          audioUrl: challenge.listening.audioUrl,
+          durationSec: challenge.listening.durationSec,
+        }
+      : null,
     questions: challenge.questions.map((q) => ({
       id: q.id,
       order: q.order,

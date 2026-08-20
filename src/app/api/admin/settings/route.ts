@@ -19,6 +19,7 @@ export async function GET() {
 const schema = z.object({
   startDate: z.string().datetime().nullable().optional(),
   endDate: z.string().datetime().nullable().optional(),
+  dailyStartTime: z.string().datetime().nullable().optional(),
   multiplierA1A2: z.number().positive().optional(),
   multiplierB1: z.number().positive().optional(),
   multiplierB2: z.number().positive().optional(),
@@ -34,20 +35,23 @@ export async function PUT(req: NextRequest) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: "Invalid settings" }, { status: 400 });
 
-  const { startDate, endDate, ...rest } = parsed.data;
+  const { startDate, endDate, dailyStartTime, ...rest } = parsed.data;
+  const toDate = (v: string | null | undefined) => (v ? new Date(v) : null);
 
   const settings = await db.competitionSettings.upsert({
     where: { id: "singleton" },
     create: {
       id: "singleton",
       ...rest,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
+      startDate: toDate(startDate),
+      endDate: toDate(endDate),
+      dailyStartTime: toDate(dailyStartTime),
     },
     update: {
       ...rest,
-      ...(startDate !== undefined ? { startDate: startDate ? new Date(startDate) : null } : {}),
-      ...(endDate !== undefined ? { endDate: endDate ? new Date(endDate) : null } : {}),
+      ...(startDate !== undefined ? { startDate: toDate(startDate) } : {}),
+      ...(endDate !== undefined ? { endDate: toDate(endDate) } : {}),
+      ...(dailyStartTime !== undefined ? { dailyStartTime: toDate(dailyStartTime) } : {}),
     },
   });
 

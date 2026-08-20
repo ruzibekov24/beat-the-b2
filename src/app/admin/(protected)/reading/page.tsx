@@ -20,6 +20,7 @@ export default function AdminReadingPage() {
   const router = useRouter();
   const [items, setItems] = useState<ReadingMaterial[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<ReadingMaterial | null>(null);
   const [loading, setLoading] = useState(true);
 
   function load() {
@@ -92,6 +93,9 @@ export default function AdminReadingPage() {
                         {item.isPublished ? "published" : "draft"}
                       </span>
                       <div className="space-x-2">
+                        <button onClick={() => setEditing(item)} className="text-white/70 hover:underline text-xs font-semibold">
+                          Edit text
+                        </button>
                         <button onClick={() => togglePublish(item)} className="text-blue-400 hover:underline text-xs font-semibold">
                           {item.isPublished ? "Unpublish" : "Publish"}
                         </button>
@@ -110,6 +114,16 @@ export default function AdminReadingPage() {
       </div>
 
       {showForm && <ReadingForm onClose={() => setShowForm(false)} onSaved={load} />}
+      {editing && (
+        <EditReadingForm
+          item={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
     </AdminShell>
   );
 }
@@ -145,6 +159,88 @@ function QuestionsAction({
       <button onClick={() => onGo(item, day)} className="text-emerald-400 hover:underline text-xs font-semibold whitespace-nowrap">
         + Add questions →
       </button>
+    </div>
+  );
+}
+
+/**
+ * Edits an existing passage in place. The create form can only ever be used
+ * once per material, so without this a typo in a published passage would
+ * need a database round-trip to fix.
+ */
+function EditReadingForm({
+  item,
+  onClose,
+  onSaved,
+}: {
+  item: ReadingMaterial;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(item.title);
+  const [content, setContent] = useState(item.content);
+  const [level, setLevel] = useState<LevelKey>(item.level);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    if (!title.trim() || !content.trim()) {
+      setError("Title and content are required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/admin/reading/${item.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content, level }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      setError("Could not save changes.");
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 grid place-items-center z-50 px-5">
+      <div className="bg-black border border-white/20 border-2 p-6 max-w-2xl w-full">
+        <h2 className="font-bold text-lg">Edit Reading</h2>
+        <p className="mt-1 text-xs text-white/40">
+          Paste the full passage below. Leave a blank line between paragraphs — learners see them as separate paragraphs.
+        </p>
+        <div className="mt-4 space-y-3">
+          <input
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full border-2 border border-white/30 bg-black px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            value={level}
+            onChange={(e) => setLevel(e.target.value as LevelKey)}
+            className="w-full border-2 border border-white/30 bg-black px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {Object.values(LEVELS).map((l) => (
+              <option key={l.key} value={l.key}>{l.label}</option>
+            ))}
+          </select>
+          <textarea
+            placeholder="Reading passage content…"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={16}
+            className="w-full border-2 border border-white/30 bg-black px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-white/40">{content.trim().split(/\s+/).filter(Boolean).length} words</p>
+        </div>
+        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        <div className="mt-5 flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
+        </div>
+      </div>
     </div>
   );
 }

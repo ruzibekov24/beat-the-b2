@@ -342,6 +342,12 @@ model CompetitionSettings {
   startDate            DateTime?
   endDate              DateTime?
 
+  // Days 2-7 start at this time of day (only the UTC time-of-day part is
+  // read; the date part is ignored). Day 1 always starts at startDate, so
+  // the opening day can begin at a different hour than the rest.
+  // null = every day starts at the same clock time as startDate.
+  dailyStartTime       DateTime?
+
   multiplierA1A2       Float    @default(1.0)
   multiplierB1          Float    @default(1.25)
   multiplierB2          Float    @default(1.5)

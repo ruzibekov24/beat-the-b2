@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 interface Settings {
   startDate: string | null;
   endDate: string | null;
+  dailyStartTime: string | null;
   multiplierA1A2: number;
   multiplierB1: number;
   multiplierB2: number;
@@ -52,14 +53,27 @@ export default function AdminSettingsPage() {
         <p className="mt-1 text-sm text-white/50">
           These values drive scoring and scheduling everywhere in the app — nothing is hardcoded on the frontend.
         </p>
+        <p className="mt-2 text-xs text-white/40">
+          Day 1 opens at the start date. Days 2–7 each open at the daily start time.
+        </p>
 
         <div className="mt-6 space-y-4">
           <Row label="Start date">
             <input
               type="datetime-local"
-              value={settings.startDate?.slice(0, 16) ?? ""}
+              value={toLocalInput(settings.startDate)}
               onChange={(e) =>
                 setSettings({ ...settings, startDate: e.target.value ? new Date(e.target.value).toISOString() : null })
+              }
+              className="border-2 border border-white/30 bg-black px-3 py-2 text-sm"
+            />
+          </Row>
+          <Row label="Daily start (days 2–7)">
+            <input
+              type="time"
+              value={toLocalTimeInput(settings.dailyStartTime)}
+              onChange={(e) =>
+                setSettings({ ...settings, dailyStartTime: fromLocalTimeInput(e.target.value) })
               }
               className="border-2 border border-white/30 bg-black px-3 py-2 text-sm"
             />
@@ -67,7 +81,7 @@ export default function AdminSettingsPage() {
           <Row label="End date">
             <input
               type="datetime-local"
-              value={settings.endDate?.slice(0, 16) ?? ""}
+              value={toLocalInput(settings.endDate)}
               onChange={(e) =>
                 setSettings({ ...settings, endDate: e.target.value ? new Date(e.target.value).toISOString() : null })
               }
@@ -108,6 +122,39 @@ export default function AdminSettingsPage() {
       </div>
     </AdminShell>
   );
+}
+
+/**
+ * `datetime-local` inputs speak local wall-clock time, but the API stores UTC
+ * ISO strings — rendering the raw ISO would show (and then re-save) the value
+ * shifted by the browser's UTC offset.
+ */
+function toLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+/** Renders a stored UTC instant as the local `HH:MM` a `time` input expects. */
+function toLocalTimeInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * Turns a local `HH:MM` back into a full ISO instant. Only the time-of-day is
+ * ever read server-side, so the date part is an arbitrary anchor.
+ */
+function fromLocalTimeInput(value: string): string | null {
+  if (!value) return null;
+  const [h, m] = value.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toISOString();
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
