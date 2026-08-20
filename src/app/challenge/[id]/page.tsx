@@ -541,10 +541,17 @@ function ReadingPassage({
       <p className="font-[family-name:var(--font-mono)] text-xs font-bold uppercase tracking-widest text-[var(--blue)]">
         {reading.title}
       </p>
-      <div className="mt-3 space-y-3 text-[15px] leading-relaxed whitespace-pre-wrap">
+      <div className="mt-3 space-y-3 text-[15px] leading-relaxed">
         {reading.content
           .split(/\n\s*\n/)
-          .map((paragraph, i) => <p key={i}>{paragraph.trim()}</p>)}
+          // Passages are usually pasted out of a PDF, which hard-wraps mid
+          // sentence — collapse those breaks so the text reflows to the
+          // reader's width instead of keeping the source's line endings.
+          .map((paragraph) => paragraph.replace(/\s*\n\s*/g, " ").trim())
+          .filter(Boolean)
+          .map((paragraph, i) => (
+            <p key={i}>{paragraph}</p>
+          ))}
       </div>
     </div>
   );
